@@ -1,110 +1,166 @@
 <!DOCTYPE html>
-
-
-<html lang="en">
-
-
+<html>
 <head>
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IoT Sensor Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-          font-family: Arial, sans-serif;
-          background-color: #f0f4f8;
-          margin: 20px;
-          padding: 20px;
+            font-family: sans-serif;
+            margin: 20px;
         }
-  
+
         h1, h2 {
-          color: #2c3e50;
+            text-align: center;
         }
-  
-        form {
-          background-color: #ffffff;
-          padding: 15px;
-          border-radius: 8px;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-          margin-bottom: 30px;
+
+        .card-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
         }
-  
-        label {
-          display: inline-block;
-          width: 120px;
-          font-weight: bold;
-          margin-top: 10px;
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 20px;
+            text-align: center;
+            width: 200px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
         }
-  
-        input[type="number"] {
-          padding: 5px;
-          margin-bottom: 10px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            margin-top: 10px;
+            display: inline-block;
         }
-  
-        button {
-          padding: 8px 16px;
-          background-color: #3498db;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
+
+        .badge.alert {
+            background-color: red;
+            color: white;
         }
-  
-        button:hover {
-          background-color: #2980b9;
+
+        .badge.low {
+            background-color: lightblue;
+            color: black;
         }
-  
+
+        .badge.normal {
+            background-color: lightgreen;
+            color: black;
+        }
+
         table {
-          width: 100%;
-          border-collapse: collapse;
-          background-color: #ffffff;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
         }
-  
+
         th, td {
-          padding: 10px;
-          border: 1px solid #ddd;
-          text-align: center;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
         }
-  
+
         th {
-          background-color: #3498db;
-          color: white;
+            background-color: #f2f2f2;
         }
-  
-        tr:nth-child(even) {
-          background-color: #f2f2f2;
+
+        #sensorChart {
+            margin: 20px auto;
+            display: block;
         }
-      </style>
+    </style>
 </head>
-
-
 <body>
-    <h1>IoT Sensor Dashboard</h1>
+    <h1>🌱 IoT Sensor Dashboard</h1>
+
+    <div class="card-container">
+        <div class="card">
+            <h3>🌡️ Temperature</h3>
+            {% if temperature %}
+                <p>{{ temperature[-1] }} °C</p>
+                {% if temperature[-1] > 35 %}
+                    <span class="badge alert">High</span>
+                {% elif temperature[-1] < 15 %}
+                    <span class="badge low">Low</span>
+                {% else %}
+                    <span class="badge normal">Normal</span>
+                {% endif %}
+            {% else %}
+                <p>No data</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h3>💧 Humidity</h3>
+            {% if humidity %}
+                <p>{{ humidity[-1] }} %</p>
+                {% if humidity[-1] > 80 %}
+                    <span class="badge alert">High</span>
+                {% elif humidity[-1] < 30 %}
+                    <span class="badge low">Low</span>
+                {% else %}
+                    <span class="badge normal">Normal</span>
+                {% endif %}
+            {% else %}
+                <p>No data</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h3>🌿 Soil Moisture</h3>
+            {% if soil_moisture %}
+                <p>{{ soil_moisture[-1] }} %</p>
+                {% if soil_moisture[-1] < 20 %}
+                    <span class="badge alert">Dry</span>
+                {% elif soil_moisture[-1] > 80 %}
+                    <span class="badge alert">Wet</span>
+                {% else %}
+                    <span class="badge normal">Good</span>
+                {% endif %}
+            {% else %}
+                <p>No data</p>
+            {% endif %}
+        </div>
+    </div>
 
     <canvas id="sensorChart" width="800" height="400"></canvas>
 
+    <h2>📊 Recent Sensor Data</h2>
+    <table>
+        <tr>
+            <th>Timestamp</th>
+            <th>Temperature (°C)</th>
+            <th>Humidity (%)</th>
+            <th>Soil Moisture (%)</th>
+        </tr>
+        {% for i in range(timestamps|length - 1, -1, -1) %}
+        <tr>
+            <td>{{ timestamps[i] }}</td>
+            <td>{{ temperature[i] }}</td>
+            <td>{{ humidity[i] }}</td>
+            <td>{{ soil_moisture[i] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
     <script>
         const ctx = document.getElementById('sensorChart').getContext('2d');
-
-        const chart = new Chart(ctx, {
+        new Chart(ctx, {
             type: 'line',
             data: {
                 labels: {{ timestamps|tojson }},
                 datasets: [
                     {
-                        label: 'Humidity (%)',
-                        data: {{ humidity|tojson }},
-                        borderColor: 'blue',
-                        fill: false
-                    },
-                    {
                         label: 'Temperature (°C)',
                         data: {{ temperature|tojson }},
                         borderColor: 'red',
+                        fill: false
+                    },
+                    {
+                        label: 'Humidity (%)',
+                        data: {{ humidity|tojson }},
+                        borderColor: 'blue',
                         fill: false
                     },
                     {
@@ -120,16 +176,14 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Sensor Data Over Time'
+                        text: 'Sensor Readings Over Time'
                     }
                 },
                 scales: {
                     x: {
-                        display: true,
                         title: { display: true, text: 'Time' }
                     },
                     y: {
-                        display: true,
                         title: { display: true, text: 'Value' }
                     }
                 }
@@ -138,8 +192,3 @@
     </script>
 </body>
 </html>
- 
-
-
- 
-

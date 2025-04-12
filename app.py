@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  # Allow CORS if needed
+CORS(app)
 
 def init_db():
     with sqlite3.connect("database.db") as conn:
@@ -24,32 +24,47 @@ def init_db():
 def index():
     with sqlite3.connect("database.db") as conn:
         c = conn.cursor()
+        # Fetch all data for chart
         c.execute("SELECT humidity, temperature, soil_moisture, timestamp FROM sensor_data ORDER BY timestamp ASC")
-        rows = c.fetchall()
+        all_rows = c.fetchall()
 
-    timestamps = [row[3] for row in rows]
-    humidity = [row[0] for row in rows]
-    temperature = [row[1] for row in rows]
-    soil_moisture = [row[2] for row in rows]
+        # Fetch recent 10 entries for table
+        c.execute("SELECT humidity, temperature, soil_moisture, timestamp FROM sensor_data ORDER BY timestamp DESC LIMIT 10")
+        table_rows = c.fetchall()
 
-    return render_template('index.html', timestamps=timestamps, humidity=humidity,
-                           temperature=temperature, soil_moisture=soil_moisture)
+    # Separate values for chart
+    timestamps = [row[3] for row in all_rows]
+    humidity = [row[0] for row in all_rows]
+    temperature = [row[1] for row in all_rows]
+    soil_moisture = [row[2] for row in all_rows]
+
+    return render_template(
+        'index.html',
+        timestamps=timestamps,
+        humidity=humidity,
+        temperature=temperature,
+        soil_moisture=soil_moisture,
+        table_data=table_rows
+    )
 
 @app.route('/submit', methods=['POST'])
 def submit():
-    humidity = float(request.form.get('humidity'))
-    temperature = float(request.form.get('temperature'))
-    soil_moisture = float(request.form.get('soil_moisture'))
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        humidity = float(request.form.get('humidity'))
+        temperature = float(request.form.get('temperature'))
+        soil_moisture = float(request.form.get('soil_moisture'))
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    with sqlite3.connect("database.db") as conn:
-        c = conn.cursor()
-        c.execute("INSERT INTO sensor_data (humidity, temperature, soil_moisture, timestamp) VALUES (?, ?, ?, ?)",
-                  (humidity, temperature, soil_moisture, timestamp))
-        conn.commit()
+        with sqlite3.connect("database.db") as conn:
+            c = conn.cursor()
+            c.execute("INSERT INTO sensor_data (humidity, temperature, soil_moisture, timestamp) VALUES (?, ?, ?, ?)",
+                      (humidity, temperature, soil_moisture, timestamp))
+            conn.commit()
+    except Exception as e:
+        print("Error inserting data:", e)
 
     return redirect('/')
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True)
+    app.run(debug=True ,host="0.0.0.0", port=5000)
